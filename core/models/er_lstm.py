@@ -108,17 +108,17 @@ class ErLSTM(nn.Module):
 
         # Second LSTM layer
         # lstm_out2: (batch_size, seq_len, 512)
-        # h_n: (2, batch_size, 256) - final hidden states for both directions
-        # c_n: (2, batch_size, 256) - final cell states for both directions
+        # h_n: (num_directions, batch_size, 256) - final hidden states for both directions
+        # c_n: (num_directions, batch_size, 256) - final cell states for both directions
         lstm_out2, (h_n, c_n) = self.lstm2(lstm_out1)
         lstm_out2 = self.dropout2(lstm_out2)
 
         # Extract final hidden state
-        # h_n shape: (2, batch_size, 256) where:
-        #   h_n[0] = final hidden state of forward LSTM
-        #   h_n[1] = final hidden state of backward LSTM
-        # We concatenate them to get (batch_size, 512)
-        final_hidden = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=1)
+        # h_n shape: (num_directions, batch_size, 256) where num_directions=2 for bidirectional
+        # Reshape to handle both single and multi-batch cases
+        h_n = h_n.view(2, -1, h_n.size(-1))  # (2, batch_size, 256)
+        # Concatenate forward and backward directions
+        final_hidden = torch.cat((h_n[0], h_n[1]), dim=1)  # (batch_size, 512)
 
         # Classification head
         out = self.fc1(final_hidden)
@@ -268,7 +268,9 @@ class ErGRU(nn.Module):
         gru_out2 = self.dropout2(gru_out2)
 
         # Extract final hidden state
-        final_hidden = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=1)
+        # Reshape to handle both single and multi-batch cases
+        h_n = h_n.view(2, -1, h_n.size(-1))  # (2, batch_size, 256)
+        final_hidden = torch.cat((h_n[0], h_n[1]), dim=1)  # (batch_size, 512)
 
         # Classification head
         out = self.fc1(final_hidden)
