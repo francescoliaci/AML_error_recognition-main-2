@@ -295,14 +295,28 @@ class CaptainCookStepDataset(Dataset):
 
 
 def collate_fn(batch):
-    # batch is a list of tuples, and each tuple is (step_features, step_labels, step_error_types)  |||| aggiunta step_error_types
+    # batch is a list of tuples, and each tuple is (step_features, step_labels, step_error_types)
     step_features, step_labels, step_error_types = zip(*batch)
 
-    # Stack the step_features and step_labels
-    step_features = torch.cat(step_features, dim=0)
-    step_labels = torch.cat(step_labels, dim=0)
+    # For sequence models (LSTM/GRU/Transformer), we need to pad sequences to the same length
+    # Find the maximum sequence length in this batch
+    max_seq_len = max(f.shape[0] for f in step_features)
+    feature_dim = step_features[0].shape[1]
+    batch_size = len(step_features)
 
-    ## stack anche dei tipi di errore
-    step_error_types = torch.cat(step_error_types,dim=0)
+    # Create padded tensor
+    padded_features = torch.zeros(batch_size, max_seq_len, feature_dim)
 
-    return step_features, step_labels, step_error_types
+    # Fill in the actual features
+    for i, features in enumerate(step_features):
+        seq_len = features.shape[0]
+        padded_features[i, :seq_len, :] = features
+
+    # For labels, take the mean or majority vote per step
+    # Since all sub-steps in a step have the same label, just take the first one
+    batch_labels = torch.stack([labels[0] for labels in step_labels])
+
+    # Same for error types
+    batch_error_types = torch.stack([error_types[0] for error_types in step_error_types])
+
+    return padded_features, batch_labels, batch_error_types
