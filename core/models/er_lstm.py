@@ -118,7 +118,7 @@ class ErLSTM(nn.Module):
         #   h_n[0] = final hidden state of forward LSTM
         #   h_n[1] = final hidden state of backward LSTM
         # We concatenate them to get (batch_size, 512)
-        final_hidden = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=1)
+        final_hidden = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=1)
 
         # Classification head
         out = self.fc1(final_hidden)
@@ -268,7 +268,7 @@ class ErGRU(nn.Module):
         gru_out2 = self.dropout2(gru_out2)
 
         # Extract final hidden state
-        final_hidden = torch.cat((h_n[-2, :, :], h_n[-1, :, :]), dim=1)
+        final_hidden = torch.cat((h_n[0, :, :], h_n[1, :, :]), dim=1)
 
         # Classification head
         out = self.fc1(final_hidden)
