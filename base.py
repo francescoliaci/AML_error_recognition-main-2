@@ -176,6 +176,9 @@ def train_model_base(train_loader, val_loader, config, test_loader=None):
     # Initialize variables to track the best model based on the desired metric (e.g., AUC)
     best_model = {'model_state': None, 'metric': 0}
 
+    # Enable automatic mixed precision for faster training
+    scaler = torch.cuda.amp.GradScaler() if device == 'cuda' else None
+
     model_name = config.model_name
     if config.model_name is None:
         model_name = fetch_model_name(config)
@@ -203,18 +206,34 @@ def train_model_base(train_loader, val_loader, config, test_loader=None):
                 assert not torch.isnan(data).any(), "Data contains NaN values"
 
                 optimizer.zero_grad()
-                output = model(data)
-                loss = criterion(output, target)
 
-                if torch.isnan(loss).any():
-                    print(f"Loss contains NaN values in epoch {epoch}, batch {batch_idx}")
-                    continue
+                # Use automatic mixed precision if available
+                if scaler is not None:
+                    with torch.cuda.amp.autocast():
+                        output = model(data)
+                        loss = criterion(output, target)
 
-                # assert not torch.isnan(loss).any(), "Loss contains NaN values"
+                    if torch.isnan(loss).any():
+                        print(f"Loss contains NaN values in epoch {epoch}, batch {batch_idx}")
+                        continue
 
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # Gradient clipping
-                optimizer.step()
+                    scaler.scale(loss).backward()
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    output = model(data)
+                    loss = criterion(output, target)
+
+                    if torch.isnan(loss).any():
+                        print(f"Loss contains NaN values in epoch {epoch}, batch {batch_idx}")
+                        continue
+
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    optimizer.step()
+
                 train_losses.append(loss.item())
                 train_loader.set_description(
                     f'Train Epoch: {epoch}, Progress: {batch_idx}/{num_batches}, Loss: {loss.item():.6f}'
@@ -267,7 +286,9 @@ def train_model_base(train_loader, val_loader, config, test_loader=None):
                 best_model['metric'] = auc
                 best_model['model_state'] = model.state_dict()
 
-            store_model(model, config, ckpt_name=f"{model_name}_epoch_{epoch}.pt")
+            # Save checkpoint every 10 epochs instead of every epoch
+            if epoch % 10 == 0:
+                store_model(model, config, ckpt_name=f"{model_name}_epoch_{epoch}.pt")
 
         # Save the best model
         if best_model['model_state'] is not None:
@@ -280,7 +301,7 @@ def train_step_test_step_dataset_base(config):
 
     cuda_kwargs = {
         "num_workers": 8,
-        "pin_memory": False,
+        "pin_memory": True,
     }
     train_kwargs = {**cuda_kwargs, "shuffle": True, "batch_size": config.batch_size}
     test_kwargs = {**cuda_kwargs, "shuffle": False, "batch_size": 1}
