@@ -47,8 +47,6 @@ class Constants:
     TRANSFORMER_VARIANT = "Transformer"
     MULTIMODAL_VARIANT = "Multimodal"
     LSTM_VARIANT = "LSTM"
-    LSTM_ATTENTION_VARIANT = "LSTM_Attention"
-    GRU_VARIANT = "GRU"
 
     # ----------------------- WANDB CONSTANTS -----------------------
     WANDB_PROJECT = "error_recognition"

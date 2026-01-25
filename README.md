@@ -1,39 +1,52 @@
-# AML/DAAI 2025 - Mistake Detection Project
+# LSTM Baseline for Mistake Detection in Procedural Activities
 
-## Environment Setup
+This project implements a new baselines for supervised error recognition in cooking videos: an LSTM that processes sequences bidirectionally
 
-First of all, create a python environment with 
+## Quick Start
+
+The easiest way to get started is using the Colab notebook:
+
+📓 **[colab_lstm_training.ipynb](colab_lstm_training.ipynb)**
+
+The notebook handles environment setup, feature extraction, training, and evaluation across all three models
+
+## Architecture
+
+The LSTM processes variable-length sequences of video features through two bidirectional LSTM layers, followed by a classification head. The model uses dropout for regularization and outputs a binary prediction (correct vs. error).
 
 ```
-python -m venv .venv
-pip install -r requirements.txt
+Input (T × 1024) → BiLSTM(512) → Dropout → BiLSTM(256) → Dropout
+  → Linear(512, 256) → ReLU → Dropout → Linear(256, 1) → Output
 ```
 
-Then, download the pre-extracted features for 1s segments and put them in the `data/features` directory.
+## Project Structure
 
-## Step 1: Baselines reproduction
-Download the official best checkpoints from [here](https://utdallas.app.box.com/s/uz3s1alrzucz03sleify8kazhuc1ksl3) (`error_recognition_best` directory) and place them in the `checkpoints`. Then run the evaluation for the error recognition task.
-
-**Example command**:
 ```
-python -m core.evaluate --variant MLP --backbone omnivore --ckpt checkpoints/error_recognition_best/MLP/omnivore/error_recognition_MLP_omnivore_step_epoch_43.pt --split step --threshold 0.6
+├── core/
+│   ├── models/
+│   │   ├── er_lstm.py          # LSTM implementation
+│   │   ├── er_former.py        # Transformer baseline
+│   │   └── blocks.py           # MLP baseline
+│   ├── evaluate.py
+│   └── config.py
+├── dataloader/
+│   ├── CaptainCookStepDataset.py
+│   └── CaptainCookSubStepDataset.py
+├── train_er.py
+├── colab_lstm_training.ipynb
+└── README.md
 ```
 
-You should be able to reproduce results close to those reported in the paper (Table 2):
+## Configuration
 
-| Split | Model | F1 | AUC |
-|-------|-------|----|-----|
-| Step | MLP (Omnivore) | 24.26 | 75.74 |
-| Recordings | MLP (Omnivore) | 55.42 | 63.03 |
-| Step | Transf. (Omnivore) | 55.39 | 75.62 |
-| Recordings | Transf. (Omnivore) | 40.73 | 62.27 |
+```python
+learning_rate = 1e-3
+batch_size = 1
+optimizer = Adam(weight_decay=1e-3)
+loss = BCEWithLogitsLoss(pos_weight=2.5)
+epochs = 50
+```
 
-**NOTE**: Use the thresholds indicated in the official README.md of project (0.6 for step and 0.4 for recordings steps).
+---
 
-## Acknowledgements
-
-This project builds on many repositories from the CaptainCook4D release. Please refer to the original codebases for more details.
-
-**Error Recognition**: https://github.com/CaptainCook4D/error_recognition
-
-**Features Extraction**: https://github.com/CaptainCook4D/feature_extractors
+**Last updated**: January 2026

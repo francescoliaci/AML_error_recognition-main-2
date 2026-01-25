@@ -298,21 +298,21 @@ def collate_fn(batch):
     # batch is a list of tuples, and each tuple is (step_features, step_labels, step_error_types)
     step_features, step_labels, step_error_types = zip(*batch)
 
-    # For sequence models (LSTM/GRU/Transformer), we need to pad sequences to the same length
-    # Find the maximum sequence length in this batch
+    # for sequence models (LSTM/Transformer), we need to pad sequences to the same length
+    # find the maximum sequence length in this batch
     max_seq_len = max(f.shape[0] for f in step_features)
     feature_dim = step_features[0].shape[1]
     batch_size = len(step_features)
 
-    # Create padded tensor
+    # create padded tensor
     padded_features = torch.zeros(batch_size, max_seq_len, feature_dim)
 
-    # Fill in the actual features
+    # fill in the actual features
     for i, features in enumerate(step_features):
         seq_len = features.shape[0]
         padded_features[i, :seq_len, :] = features
 
-    # For labels, take the mean or majority vote per step
+    # For labels take the mean or majority vote per step
     # Since all sub-steps in a step have the same label, just take the first one
     batch_labels = torch.stack([labels[0] for labels in step_labels])
 

@@ -54,14 +54,6 @@ def fetch_model(config):
         if config.backbone in [const.OMNIVORE, const.RESNET3D, const.X3D, const.SLOWFAST, const.IMAGEBIND]:
             from core.models.er_lstm import ErLSTM
             model = ErLSTM(config)
-    elif config.variant == const.LSTM_ATTENTION_VARIANT:
-        if config.backbone in [const.OMNIVORE, const.RESNET3D, const.X3D, const.SLOWFAST, const.IMAGEBIND]:
-            from core.models.er_lstm import ErLSTMWithAttention
-            model = ErLSTMWithAttention(config)
-    elif config.variant == const.GRU_VARIANT:
-        if config.backbone in [const.OMNIVORE, const.RESNET3D, const.X3D, const.SLOWFAST, const.IMAGEBIND]:
-            from core.models.er_lstm import ErGRU
-            model = ErGRU(config)
 
     assert model is not None, f"Model not found for variant: {config.variant} and backbone: {config.backbone}"
     model.to(config.device)
@@ -152,7 +144,7 @@ def train_epoch(model, device, train_loader, optimizer, epoch, criterion):
         assert not torch.isnan(loss).any(), "Loss contains NaN values"
 
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # Gradient clipping
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # gradient clipping
         optimizer.step()
         train_losses.append(loss.item())
         train_loader.set_description(
@@ -199,7 +191,7 @@ def train_model_base(train_loader, val_loader, config, test_loader=None):
             num_batches = len(train_loader)
             train_losses = []
 
-            ## aggiunto il terzo valore, anche se inutilizzaot, perchè ora collate_fn ritorna 3 valori
+            ## aggiunto il terzo valore, anche se inutilizzato, perchè ora collate_fn ritorna 3 valori
             for batch_idx, (data, target,_) in enumerate(train_loader):
                 data, target = data.to(device), target.to(device)
 
